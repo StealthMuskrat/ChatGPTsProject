@@ -1,0 +1,63 @@
+name: Build and publish final release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release.yml'
+concurrency:
+  group: publish-emergence-atlas
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  release:
+    if: github.repository == 'StealthMuskrat/ChatGPTsProject'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - run: npm install --no-save --package-lock=false esbuild@0.25.12 playwright@1.58.2
+      - run: npm run check
+      - run: npm run test:browser
+        env:
+          ATLAS_BROWSER_CHANNEL: chrome
+      - run: npm run build
+      - run: npm run test:release
+        env:
+          ATLAS_BROWSER_CHANNEL: chrome
+      - run: python3 scripts/pack-release.py
+      - name: Prepare and verify draft, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="v$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to overwrite it."
+            exit 1
+          fi
+          if gh api "repos/$GH_REPO/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists; refusing to move it."
+            exit 1
+          fi
+          gh release create "$tag" "dist/Emergence-Atlas-$tag.zip" dist/Emergence-Atlas.html dist/SHA256SUMS.txt dist/build-manifest.json --draft --target "$GITHUB_SHA" --title "Emergence Atlas $tag — Final Edition" --notes-file "docs/RELEASE-$tag.md"
+          gh release download "$tag" --dir verify-assets
+          (cd verify-assets && sha256sum --check SHA256SUMS.txt)
+          gh release edit "$tag" --draft=false --latest
+          gh release view "$tag" --json url,tagName,isDraft,assets > dist/release.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: final-release-verification
+          path: |
+            dist/
+            test-results/
+          retention-days: 14

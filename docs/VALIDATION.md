@@ -32,6 +32,14 @@ The Node checks do not require a browser. A missing browser installation prevent
 
 ## Manual review
 
+## Compiled release checks
+
+The final-release workflow compiles the source modules with esbuild 0.25.12 into one HTML file, embedding the CSS and SVG icon. It runs the existing model and browser suites, then five additional scenarios against the compiled file opened directly with `file://`, with HTTP(S) asset requests blocked. These exercise all three worlds, comparisons and maps, local notebook persistence and JSON export, compiled PNG export, local sharing guidance, and phone layout. The report includes the browser version and any unexpected network requests.
+
+The package script verifies the manifest, creates a ZIP with fixed file order/timestamps/permissions, checks every archived file against the tested build, and writes SHA-256 checksums. The workflow creates a draft release, downloads the uploaded assets again, verifies their checksums, and only then publishes it. Existing release tags and assets are never overwritten automatically. A manual rerun is available through the **Build and publish final release** workflow after a future version is prepared.
+
+## Manual review
+
 - Try all three worlds with pointer and keyboard; pause and restart at different tempos.
 - Confirm field explanations match what the controls do.
 - Save, export, reload, import, restore, and continue a moment. Compare restored images and future behavior.

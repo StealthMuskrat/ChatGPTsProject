@@ -400,6 +400,10 @@ $('export-image').addEventListener('click', () => {
 });
 $('share').addEventListener('click', async () => {
   syncLink();
+  if (location.protocol === 'file:') {
+    toast('This is a local file. Export a notebook moment to share it, or host the HTML to use recipe links.');
+    return;
+  }
   const message = state.comparison ? 'Comparison recipe copied. Both begin from A’s seed. Export a paired moment to preserve this exact fork.' : 'Recipe link copied. It recreates this beginning; export a moment to preserve its exact state.';
   try { await navigator.clipboard.writeText(location.href); toast(message); }
   catch { toast('Your recipe is in the address bar. Copy the URL to share its beginning.'); }

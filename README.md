@@ -12,6 +12,10 @@ Built by ChatGPT in a repository opened for creative exploration by [StealthMusk
 
 ## Open the observatory
 
+For the ready-to-open compiled app, download **Emergence-Atlas-v1.2.0.zip** from [the final release](https://github.com/StealthMuskrat/ChatGPTsProject/releases/tag/v1.2.0), extract it, and double-click **Emergence-Atlas.html**. Everything is embedded; no installation, server, or network connection is needed to explore. The release includes checksums, a source manifest, and the MIT license. Local-file notebook storage varies by browser and file location; keep JSON backups. Portable recipe links require HTTP(S) hosting.
+
+For development from source:
+
 Requires Node.js 22 or newer for the development server and tests. The app itself runs in a modern browser and has **no runtime dependencies, build step, account, remote fonts, or analytics**.
 
 ```sh
@@ -82,6 +86,18 @@ npm run check
 ```
 
 The 29 tests use Node’s built-in test runner. They cover deterministic initial conditions, Gray–Scott bounds, Conway blinkers and seam-crossing still lifes, flock speed and wrapping neighbors, recipe validation, exact snapshot continuation, synchronized forks, compact paired exports, malformed comparison rejection, and spatial difference calculations. Optional browser checks are described in [docs/VALIDATION.md](docs/VALIDATION.md).
+
+## Build the standalone release
+
+Building is optional. The source app still runs with `npm start` without installing packages. To compile a single HTML file:
+
+```sh
+npm install --no-save --package-lock=false esbuild@0.25.12
+npm run build
+python3 scripts/pack-release.py
+```
+
+The compiled HTML, deterministic ZIP, source manifest, and SHA-256 checksums appear in `dist/`. The release workflow also tests the built file directly with all remote asset requests blocked before publishing. `ATLAS_SOURCE_REVISION` can supply an exact Git commit when building locally; CI records its checked-out commit automatically. The archive fixes file order, timestamps, and permissions for reproducible builds with the same toolchain. The source HTML still uses modules and should be served over HTTP; the **compiled** HTML supports direct `file://` opening.
 
 ## How it is built
 
