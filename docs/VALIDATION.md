@@ -30,9 +30,9 @@ The script starts its own local server on port 3099 and checks the interface usi
 
 The Node checks do not require a browser. A missing browser installation prevents the browser script from running and should not be reported as a passing check. Test results are available in the repository’s **Actions** tab. Chromium automation is not a substitute for manual checks in Safari, Firefox, or on physical touch devices.
 
-## Manual review
-
 ## Compiled release checks
+
+[v1.2.0](https://github.com/StealthMuskrat/ChatGPTsProject/releases/tag/v1.2.0) was published from source commit `becdedb0da5cddad0c82bea4946e732432e2d7bc` after [this release workflow](https://github.com/StealthMuskrat/ChatGPTsProject/actions/runs/40409842994) passed all 29 model/server tests, 20 source browser scenarios, and five standalone checks in Chrome 155.0.8059.39. The compiled file made no HTTP(S) requests during its offline checks. Its phone screenshot was visually reviewed. The published ZIP, HTML, and manifest checksums were verified against the tested artifacts.
 
 The final-release workflow compiles the source modules with esbuild 0.25.12 into one HTML file, embedding the CSS and SVG icon. It runs the existing model and browser suites, then five additional scenarios against the compiled file opened directly with `file://`, with HTTP(S) asset requests blocked. These exercise all three worlds, comparisons and maps, local notebook persistence and JSON export, compiled PNG export, local sharing guidance, and phone layout. The report includes the browser version and any unexpected network requests.
 
