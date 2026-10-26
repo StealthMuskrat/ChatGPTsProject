@@ -22,7 +22,7 @@
       <button type="button" id="notebook-open">Field notebook <span id="saved-count">0</span></button>
       <button type="button" id="about-open">About the atlas <span aria-hidden="true">↗</span></button>
     </nav>
-    <span class="edition">AN OPEN EXPLORATION <span>VOL. 002</span></span>
+    <span class="edition">AN OPEN EXPLORATION <span>VOL. 003</span></span>
   </header>
 
   <main>
@@ -41,7 +41,7 @@
 
       <section class="experiment" aria-labelledby="world-title">
         <div class="experiment-heading"><div><p class="eyebrow" id="world-family"></p><h2 id="world-title"></h2></div><span class="live-status" id="live-status"><i></i> UNFOLDING</span></div>
-        <div class="compare-toolbar"><button type="button" id="compare" aria-pressed="false">⇄ Compare two futures</button><span id="compare-invitation">One beginning. A different possibility.</span></div>
+        <div class="compare-toolbar"><button type="button" id="compare" aria-pressed="false">⇄ Compare two futures</button><span id="compare-invitation">One beginning. A different possibility.</span><button type="button" id="difference-toggle" aria-pressed="false" aria-controls="difference-panel" hidden>Δ Show difference map</button></div>
         <p id="comparison-note" class="comparison-note" hidden></p>
         <div class="field-pair" id="field-pair">
         <div class="field-world" id="baseline-world" hidden>
@@ -66,6 +66,13 @@
         </div>
         <div class="metrics" id="metrics" aria-label="Simulation statistics"></div>
         <p class="interaction" id="interaction"></p>
+        <section class="difference-panel" id="difference-panel" aria-labelledby="difference-title" hidden>
+          <div class="difference-heading"><div><p class="eyebrow">A DIFFERENT WAY TO SEE</p><h3 id="difference-title"></h3></div><label id="difference-gain-label">Display contrast <select id="difference-gain"><option value="1">1×</option><option value="4" selected>4×</option><option value="16">16×</option></select></label></div>
+          <div class="difference-content">
+            <div class="viewport"><canvas id="difference-field" width="960" height="640" tabindex="0" role="img" aria-label="Difference map, read only" aria-describedby="difference-description difference-scale difference-summary"></canvas></div>
+            <div class="difference-key"><p id="difference-description"></p><div id="difference-gradient" class="difference-gradient" aria-hidden="true"></div><div id="difference-categories" class="difference-categories" hidden><span><i class="a-only"></i>A only</span><span><i class="b-only"></i>B only</span><span><i class="both-alive"></i>Both alive</span><span><i class="both-dead"></i>Both dead</span></div><p id="difference-scale" class="difference-scale"></p><p id="difference-summary" class="difference-summary"></p><p id="difference-note"></p><button type="button" class="secondary" id="export-difference">↓ Save difference map</button></div>
+          </div>
+        </section>
       </section>
 
       <aside class="inspector" aria-label="Experiment controls">

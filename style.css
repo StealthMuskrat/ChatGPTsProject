@@ -342,9 +342,116 @@ h1 em {
 }
 .compare-toolbar {
   display:flex;
+  flex-wrap:wrap;
   align-items:center;
   gap:14px;
   margin:0 0 16px;
+}
+#difference-toggle {
+  margin-left:auto;
+}
+.difference-panel {
+  margin-top:26px;
+  padding-top:24px;
+  border-top:1px solid var(--line);
+}
+.difference-heading {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:center;
+  margin-bottom:17px;
+}
+.difference-heading .eyebrow {
+  font-size:8px;
+  margin-bottom:7px;
+}
+.difference-heading h3 {
+  font:23px/1.2 var(--serif);
+  font-weight:400;
+  margin:0;
+}
+.difference-heading label {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:var(--muted);
+  font-size:10px;
+  flex-shrink:0;
+}
+.difference-heading select {
+  padding:5px;
+  color:var(--ink);
+  font:11px var(--mono);
+}
+.difference-content {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:20px;
+  align-items:start;
+}
+#difference-field {
+  display:block;
+  width:100%;
+  height:100%;
+}
+.difference-key {
+  min-width:0;
+}
+.difference-key p {
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.8;
+  margin-bottom:14px;
+}
+.difference-key .difference-scale {
+  color:var(--lime);
+  font:10px/1.7 var(--mono);
+  margin-top:7px;
+}
+.difference-key .difference-summary {
+  color:var(--ink);
+  font:11px/1.7 var(--mono);
+}
+.difference-gradient {
+  height:8px;
+  border:1px solid var(--line);
+  border-radius:3px;
+  background:linear-gradient(90deg,rgb(10,23,29) 0%,rgb(32,73,84) 10%,rgb(72,139,137) 35%,rgb(214,215,154) 65%,rgb(239,153,104) 100%);
+}
+.difference-categories {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px 12px;
+  font:10px var(--mono);
+  color:var(--ink);
+}
+.difference-categories span {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.difference-categories i {
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border:1px solid var(--line);
+}
+.difference-categories .a-only { background:rgb(239,170,108); }
+.difference-categories .b-only { background:rgb(112,210,224); }
+.difference-categories .both-alive { background:rgb(51,75,65); }
+.difference-categories .both-dead { background:rgb(10,23,29); }
+@media(max-width:1100px) {
+  .difference-content {
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+@media(max-width:650px) {
+  .difference-heading {
+    flex-direction:column;
+    align-items:start;
+    gap:12px;
+  }
 }
 .compare-toolbar button {
   border-color:#697d55;

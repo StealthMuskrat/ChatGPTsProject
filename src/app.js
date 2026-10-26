@@ -2,6 +2,7 @@ import { catalog, defaults } from './catalog.js';
 import { newSeed, readLink, linkHash, recipeOf, worldFromRecipe, forkComparison, restartComparison, snapshotOf, restoreSnapshot, validateSnapshot, MAX_IMPORT_BYTES } from './state.js';
 import { comparisonControls, comparisonBounds, advanceWorld, paintWorld, releaseWorld, differenceMetric } from './comparison.js';
 import { Renderer } from './render.js';
+import { DifferenceRenderer, mapInfo } from './difference.js';
 
 const $ = id => document.getElementById(id);
 const storageKey = 'emergence-atlas.notebook.v1';
@@ -9,11 +10,14 @@ const canvas = $('field');
 const baselineCanvas = $('field-baseline');
 const renderer = new Renderer(canvas);
 const baselineRenderer = new Renderer(baselineCanvas);
+const differenceCanvas = $('difference-field');
+const differenceRenderer = new DifferenceRenderer(differenceCanvas);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let playing = !reducedMotion.matches;
 let state, entries = [], toastTimer, lastTime = 0, debt = 0, dirty = true, lastMetrics = 0;
 let pointer = null;
 let storageWarning = '';
+let showDifference = false, differenceGain = 4;
 
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -108,6 +112,9 @@ function syncComparisonUI() {
   $('compare').setAttribute('aria-pressed',String(active));
   $('compare').textContent = active ? '↳ Keep variant' : '⇄ Compare two futures';
   $('compare-invitation').textContent = active ? 'Same moment. One rule apart.' : 'One beginning. A different possibility.';
+  $('compare-invitation').hidden = active;
+  if (!active) showDifference = false;
+  syncDifferenceUI();
   $('reset').setAttribute('aria-label',active ? 'Restart both from the fork' : 'Restart from seed');
   $('reset').title = active ? 'Restart both from the fork (R)' : 'Restart from seed (R)';
   $('seed-note').textContent = active ? 'Shared seed. Reset returns both to the fork.' : 'Same seed. Same beginning.';
@@ -131,6 +138,55 @@ function syncComparisonUI() {
   }[state.kind];
   syncComparisonReadout();
 }
+
+function syncDifferenceUI() {
+  const active = !!state.comparison;
+  $('difference-toggle').hidden = !active;
+  $('difference-toggle').setAttribute('aria-pressed',String(active && showDifference));
+  $('difference-toggle').textContent = showDifference ? 'Δ Hide difference map' : 'Δ Show difference map';
+  $('difference-panel').hidden = !active || !showDifference;
+  if (!active) return;
+  const info = mapInfo(state.kind,state.comparison.baseline,differenceGain);
+  $('difference-title').textContent = info.title;
+  $('difference-description').textContent = info.description;
+  $('difference-scale').textContent = info.scale;
+  $('difference-note').textContent = info.note;
+  $('difference-gain-label').hidden = state.kind === 'life';
+  $('difference-categories').hidden = state.kind !== 'life';
+  $('difference-gradient').hidden = state.kind === 'life';
+  differenceCanvas.setAttribute('aria-label',`${info.title}. Read-only map; Space pauses both worlds.`);
+}
+
+$('difference-toggle').addEventListener('click', () => {
+  if (!state.comparison) return;
+  showDifference = !showDifference;
+  syncDifferenceUI(); draw(); updateMetrics();
+});
+$('difference-gain').addEventListener('change', () => {
+  differenceGain = Number($('difference-gain').value);
+  syncDifferenceUI(); draw();
+});
+$('export-difference').addEventListener('click', () => {
+  if (!state.comparison) return;
+  draw();
+  const info = mapInfo(state.kind,state.comparison.baseline,differenceGain);
+  const image = document.createElement('canvas'); image.width = 960; image.height = 768;
+  const ctx = image.getContext('2d'); ctx.fillStyle = '#111916'; ctx.fillRect(0,0,image.width,image.height);
+  ctx.fillStyle = '#d4eb95'; ctx.font = '18px monospace'; ctx.fillText(info.title,16,28);
+  ctx.fillStyle = '#eceee2'; ctx.font = '12px monospace'; ctx.fillText(info.scale,16,51);
+  if (state.kind !== 'life') {
+    const gradient = ctx.createLinearGradient(640,0,944,0);
+    for (const [at,color] of [[0,'#0a171d'],[.1,'#204954'],[.35,'#488b89'],[.65,'#d6d79a'],[1,'#ef9968']]) gradient.addColorStop(at,color);
+    ctx.fillStyle = gradient; ctx.fillRect(640,16,304,9);
+  }
+  ctx.drawImage(differenceCanvas,0,66);
+  ctx.fillStyle = '#9aa698'; ctx.font = '11px monospace';
+  ctx.fillText(`EMERGENCE ATLAS / SEED ${state.seed} / TICK ${state.tick} / ${state.kind === 'life' ? 'OCCUPANCY ONLY' : `DISPLAY CONTRAST ${differenceGain}x; UPPER SCALE CLIPS`}`,16,730);
+  if (state.kind === 'flock') ctx.fillText('AMBER RINGS: A / CYAN DOTS: B / SHORTEST WRAPPING PATHS / POSITIONS ONLY',16,751);
+  if (state.kind === 'reaction') ctx.fillText('ABSOLUTE DIFFERENCE IN CHEMICAL v / DARK: ZERO / WARM: UPPER SCALE OR GREATER',16,751);
+  const filename = `atlas-${state.kind}-${state.seed}-${state.tick}-difference.png`;
+  image.toBlob(blob => { if (blob) { download(blob,filename); toast('Difference map exported with its scale.'); } },'image/png');
+});
 
 function syncComparisonReadout() {
   const { parameter,baseline } = state.comparison;
@@ -218,6 +274,10 @@ function updateMetrics() {
     const value = document.createElement('b'); value.textContent = m.value;
     el.append(label,value); return el;
   }));
+  if (state.comparison && showDifference) {
+    const difference = metrics[2];
+    $('difference-summary').textContent = `${difference.label}: ${difference.value} · Tick ${state.tick.toLocaleString()}`;
+  }
 }
 
 function tick(count = 1) {
@@ -227,6 +287,7 @@ function tick(count = 1) {
 function draw() {
   renderer.draw(state.kind,state.engine);
   if (state.comparison) baselineRenderer.draw(state.kind,state.comparison.baseline);
+  if (state.comparison && showDifference) differenceRenderer.draw(state.kind,state.comparison.baseline,state.engine,differenceGain);
   dirty = false;
 }
 

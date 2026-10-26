@@ -6,6 +6,8 @@ Edition 002 passed **24 model/server tests** on Node 22 and 24 and **16 browser 
 
 ## Model and persistence checks
 
+Edition 003 expands the suite to **29 model/server tests** and **20 Chromium scenarios**. Map checks cover absolute concentration differences, four exact occupancy classes, traveler identity and both wrapping seams, fixed color limits, non-mutating contrast changes, zero maps for identical chemical fields, labeled PNG dimensions, reconstruction after paired restoration, and responsive map layouts. The Actions tab records results for each commit.
+
 Run `npm run check` with Node.js 22 or newer. This checks the application and renderer syntax, then runs the Node test suite without third-party packages. CI runs it on Node 22 and 24.
 
 Fifteen regression tests cover seeded randomness, toroidal geometry, finite reaction fields across presets, known Conway patterns, simultaneous flock updates, agent bounds and speeds, malformed recipes, snapshot validation, independent saved arrays, identical continuation after JSON transport, and development-server behavior.

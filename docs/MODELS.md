@@ -47,6 +47,16 @@ The concentration statistic is the mean absolute difference in `v` over all site
 
 These statistics are descriptive model comparisons. A rule change need not create immediate visible divergence. Live slider edits create a history of interventions; that history is not recorded. Recipe links therefore reproduce a seeded common beginning under the currently selected settings, while exact paired snapshots preserve the current fields and their original reset point.
 
+## Spatial difference maps
+
+Maps are read-only projections of A and B; they never call a model update or modify its arrays. Chemical pixels contain `abs(v_A − v_B)` and exclude `u`. Life pixels classify four occupancy states and exclude age. Traveler paths match the same array index in A and B. Their displacements use the shortest toroidal delta in each coordinate. Visible copies of a seam-crossing segment continue the line across opposite edges rather than drawing a long line through the field.
+
+Continuous maps use a fixed linear color ramp, with no per-frame normalization. Chemical contrast `g` maps differences from 0 to `1/g` across the ramp, clipping higher values to the warmest color. Traveler distance is normalized by the maximum shortest toroidal distance, `sqrt((width/2)^2 + (height/2)^2)`. At contrast `g`, the upper bound is this distance divided by `g`. For the 960 × 640 flock world, the maximum is approximately 576.89 world units. Zero always has the same dark color.
+
+Amber rings and cyan dots distinguish traveler endpoints independently of line intensity. Coincident positions still show markers; they have zero displacement. Velocity differences are excluded. Life categories use amber for A-only, cyan for B-only, muted green for both alive, and dark for both dead. Grid maps use nearest-neighbor display, so no interpolated colors suggest extra occupancy classes.
+
+Map PNG exports include their fixed scale or categorical legend and the seed and tick. View contrast and visibility remain outside snapshot and recipe formats. Recomputing a map from a restored pair at the same contrast gives the same raster in the same browser environment.
+
 ## Persistence formats
 
 Version 1 snapshots contain `version`, `kind`, `seed`, `params`, `tick`, and `data`. Grid dimensions and flock population are fixed by the version. Imports reject unknown versions and worlds, missing/out-of-range or off-step parameters, invalid seeds or ticks, incorrect array lengths, and non-finite or out-of-range cell/agent data. Files are size-checked before parsing. No imported value is inserted as HTML or executed.

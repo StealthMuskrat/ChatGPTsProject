@@ -281,6 +281,87 @@ try {
   await pairedContext.close();
   activePage = page;
 
+  const mapContext = await browser.newContext({ viewport:{ width:1440,height:1100 },reducedMotion:'reduce',acceptDownloads:true });
+  const maps = await mapContext.newPage(); activePage = maps;
+  maps.on('pageerror',e => errors.push(e.message));
+  maps.on('response',r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
+  await maps.goto(origin);
+  await maps.waitForFunction(() => document.querySelectorAll('#controls .control').length === 3);
+
+  await check('chemical difference maps start at zero and contrast changes leave both fields and their recipe unchanged',async () => {
+    assert.ok(await maps.locator('#difference-toggle').isHidden());
+    await maps.locator('#compare').click(); await maps.locator('#difference-toggle').click();
+    assert.ok(await maps.locator('#difference-panel').isVisible());
+    const zero = await maps.locator('#difference-field').evaluate(c => {
+      const d = c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+      for (let i = 0; i < d.length; i += 4) if (d[i] !== 10 || d[i+1] !== 23 || d[i+2] !== 29 || d[i+3] !== 255) return false;
+      return true;
+    });
+    assert.ok(zero,'identical chemical concentrations must make a uniformly zero map');
+    await maps.locator('#play').click();
+    await maps.waitForFunction(() => Number(document.querySelector('#tick').textContent) >= 180);
+    await maps.locator('#play').click();
+    const before = await maps.evaluate(() => ({
+      a:document.querySelector('#field-baseline').toDataURL(),b:document.querySelector('#field').toDataURL(),tick:document.querySelector('#tick').textContent,hash:location.hash,
+    }));
+    await maps.locator('#difference-gain').selectOption('1');
+    const low = await maps.locator('#difference-field').evaluate(c => c.toDataURL());
+    await maps.locator('#difference-gain').selectOption('16');
+    assert.notEqual(await maps.locator('#difference-field').evaluate(c => c.toDataURL()),low);
+    assert.match(await maps.locator('#difference-scale').innerText(),/0\.0625/);
+    assert.deepEqual(await maps.evaluate(() => ({
+      a:document.querySelector('#field-baseline').toDataURL(),b:document.querySelector('#field').toDataURL(),tick:document.querySelector('#tick').textContent,hash:location.hash,
+    })),before);
+    await noOverflow(maps); await screenshot(maps,'desktop-difference-map.png');
+  });
+
+  await check('difference PNGs carry a scale and restored paired moments reconstruct the same map',async () => {
+    const download = maps.waitForEvent('download'); await maps.locator('#export-difference').click();
+    const bytes = await readFile(await (await download).path());
+    assert.deepEqual([...bytes.subarray(0,8)],[137,80,78,71,13,10,26,10]);
+    assert.equal(bytes.readUInt32BE(16),960); assert.equal(bytes.readUInt32BE(20),768);
+    const pixels = await maps.locator('#difference-field').evaluate(c => c.toDataURL());
+    await maps.locator('#save').click(); assert.equal(await maps.locator('#saved-count').innerText(),'1');
+    await maps.locator('#step').click();
+    await maps.locator('#notebook-open').click(); await maps.getByRole('button',{ name:'Restore moment' }).click();
+    assert.equal(await maps.locator('#difference-field').evaluate(c => c.toDataURL()),pixels);
+    await maps.locator('#difference-toggle').click(); assert.ok(await maps.locator('#difference-panel').isHidden());
+  });
+
+  await check('Life difference maps use exact occupancy categories and fit narrow phones',async () => {
+    await maps.locator('[data-world="life"]').click(); await maps.locator('#compare').click(); await maps.locator('#difference-toggle').click();
+    assert.ok(await maps.locator('#difference-gain-label').isHidden());
+    assert.ok(await maps.locator('#difference-categories').isVisible());
+    await maps.locator('#step').click();
+    const colors = await maps.locator('#difference-field').evaluate(c => {
+      const pixels = c.getContext('2d').getImageData(0,0,c.width,c.height).data, found = new Set();
+      for (let i = 0; i < pixels.length; i += 4) found.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]}`);
+      return [...found].sort();
+    });
+    assert.deepEqual(colors,['10,23,29','51,75,65','239,170,108','112,210,224'].sort());
+    for (const width of [1024,768,390,320]) { await maps.setViewportSize({ width,height:900 }); await noOverflow(maps); }
+    await maps.setViewportSize({ width:390,height:844 }); await screenshot(maps,'phone-difference-map.png');
+  });
+
+  await check('flock difference maps explain wrapping paths, can export, and disappear when leaving comparison',async () => {
+    await maps.setViewportSize({ width:1440,height:1100 });
+    await maps.locator('[data-world="flock"]').click(); await maps.locator('#compare').click(); await maps.locator('#difference-toggle').click();
+    await maps.locator('#difference-gain').selectOption('1');
+    assert.match(await maps.locator('#difference-scale').innerText(),/576\.89 world units/);
+    assert.match(await maps.locator('#difference-description').innerText(),/Amber rings mark A; cyan dots mark B/);
+    assert.ok(await maps.locator('#difference-categories').isHidden());
+    assert.ok(await maps.locator('#difference-gradient').isVisible());
+    await maps.locator('#play').click();
+    await maps.waitForFunction(() => Number(document.querySelector('#tick').textContent) >= 180);
+    await maps.locator('#play').click();
+    await noOverflow(maps); await screenshot(maps,'desktop-traveler-paths.png');
+    const download = maps.waitForEvent('download'); await maps.locator('#export-difference').click();
+    assert.match((await download).suggestedFilename(),/flock.*difference\.png$/);
+    await maps.locator('#compare').click();
+    assert.ok(await maps.locator('#difference-toggle').isHidden()); assert.ok(await maps.locator('#difference-panel').isHidden());
+  });
+  await mapContext.close(); activePage = page;
+
   await check('storage failure offers a portable export without claiming a save',async () => {
     const blocked = await browser.newContext({ reducedMotion:'reduce',acceptDownloads:true });
     await blocked.addInitScript(() => { Storage.prototype.setItem = () => { throw new Error('Storage disabled'); }; });

@@ -6,7 +6,7 @@
 
 A browser observatory for patterns that emerge from local interactions. Grow a chemical garden, guide a flock with no leader, or explore a universe of living cells. Change the rules while it runs. Keep a moment when something surprises you.
 
-Built by ChatGPT in a repository opened for creative exploration by [StealthMuskrat](https://github.com/StealthMuskrat). Edition 002 adds synchronized comparisons to the three original worlds.
+Built by ChatGPT in a repository opened for creative exploration by [StealthMuskrat](https://github.com/StealthMuskrat). Edition 003 completes the observatory with spatial difference maps for the synchronized comparisons.
 
 ![Edition 002 comparing two chemical gardens from the same moment with different feed rates](docs/two-futures.webp)
 
@@ -45,6 +45,20 @@ Choose **Compare two futures** at any moment. The atlas pauses and copies that e
 
 Comparison recipe links begin with A’s seed and initial parameters, copy that common field, then apply B’s rule. They do **not** preserve the later moment at which you forked, brush strokes, or the history of slider changes. Export a paired moment for an exact continuation. On phones the two fields stack vertically, with the same shared controls.
 
+## See where futures diverge
+
+Inside a comparison, choose **Show difference map** to reveal a read-only spatial view beneath the fields:
+
+| World | What the map shows |
+| --- | --- |
+| Chemicals | Absolute concentration difference in `v` at each site. Dark is zero; warmer colors mean larger differences. |
+| Living cells | Amber is alive only in A; cyan is alive only in B. Muted green is alive in both; dark is dead in both. Cell ages are excluded. |
+| Flocks | Amber rings mark A and cyan dots mark B. Lines connect each traveler to its counterpart using the shortest wrapping path, continuing across world edges. |
+
+Chemical and flock maps offer **1×, 4×, or 16× display contrast** with a fixed, labeled linear color scale. Values above the displayed upper bound share the warmest color; the map never rescales itself as the world evolves. Contrast changes no simulation parameters, state, or measured statistics. Life uses categories and needs no contrast control.
+
+**Save difference map** exports a separate 960 × 768 PNG with the scale or category key, seed, and tick. The ordinary field PNG export remains available. Map visibility and contrast are temporary view preferences; they are not part of recipe links or notebook formats. Restoring a paired moment reconstructs its map from the two saved states.
+
 ## Explore, keep, share
 
 - **Draw / touch:** add chemical or living cells; hold to attract the flock.
@@ -67,7 +81,7 @@ The interface adapts to phones and respects reduced-motion preferences by starti
 npm run check
 ```
 
-The 24 tests use Node’s built-in test runner. They cover deterministic initial conditions, Gray–Scott bounds, Conway blinkers and seam-crossing still lifes, flock speed and wrapping neighbors, recipe validation, exact snapshot continuation, synchronized forks, compact paired exports, and malformed comparison rejection. Optional browser checks are described in [docs/VALIDATION.md](docs/VALIDATION.md).
+The 29 tests use Node’s built-in test runner. They cover deterministic initial conditions, Gray–Scott bounds, Conway blinkers and seam-crossing still lifes, flock speed and wrapping neighbors, recipe validation, exact snapshot continuation, synchronized forks, compact paired exports, malformed comparison rejection, and spatial difference calculations. Optional browser checks are described in [docs/VALIDATION.md](docs/VALIDATION.md).
 
 ## How it is built
 
@@ -80,6 +94,7 @@ src/random.js        Seeded generator and toroidal geometry
 src/state.js         Recipe encoding and snapshot validation
 src/comparison.js    Shared clocks, inputs, one-rule bounds, and difference metrics
 src/encoding.js      Lossless, portable grid bytes for paired moments
+src/difference.js    Spatial difference calculations, fixed scales, map rendering
 src/render.js        Canvas rendering, independent of scheduling
 src/app.js           Controls, fixed-step clock, notebook, import/export
 scripts/serve.js     Local static server using Node’s standard library
