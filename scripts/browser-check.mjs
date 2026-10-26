@@ -17,7 +17,15 @@ server.stderr.on('data', d => { serverLog += d; });
 const results = [], errors = [];
 let browser, page;
 async function check(name,fn) { await fn(); results.push(name); console.log(`✓ ${name}`); }
-async function noOverflow(p) { assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth),'horizontal overflow'); }
+async function noOverflow(p) {
+  const overflow = await p.evaluate(() => ({
+    width:innerWidth,scroll:document.documentElement.scrollWidth,
+    elements:[...document.body.querySelectorAll('*')].filter(el => {
+      const r = el.getBoundingClientRect(); return r.width > 0 && r.right > innerWidth+1;
+    }).slice(0,12).map(el => ({ tag:el.tagName,id:el.id,class:el.className,right:el.getBoundingClientRect().right })),
+  }));
+  assert.ok(overflow.scroll <= overflow.width,`horizontal overflow: ${JSON.stringify(overflow)}`);
+}
 async function screenshot(p,name) { await p.screenshot({ path:fileURLToPath(new URL(name,out)),fullPage:true }); }
 
 try {
