@@ -1,0 +1,5 @@
+node_modules/
+.tmp/
+.browsers/
+test-results/
+.DS_Store
