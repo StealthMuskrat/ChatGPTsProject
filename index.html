@@ -22,7 +22,7 @@
       <button type="button" id="notebook-open">Field notebook <span id="saved-count">0</span></button>
       <button type="button" id="about-open">About the atlas <span aria-hidden="true">↗</span></button>
     </nav>
-    <span class="edition">AN OPEN EXPLORATION <span>VOL. 001</span></span>
+    <span class="edition">AN OPEN EXPLORATION <span>VOL. 002</span></span>
   </header>
 
   <main>
@@ -41,11 +41,22 @@
 
       <section class="experiment" aria-labelledby="world-title">
         <div class="experiment-heading"><div><p class="eyebrow" id="world-family"></p><h2 id="world-title"></h2></div><span class="live-status" id="live-status"><i></i> UNFOLDING</span></div>
+        <div class="compare-toolbar"><button type="button" id="compare" aria-pressed="false">⇄ Compare two futures</button><span id="compare-invitation">One beginning. A different possibility.</span></div>
+        <p id="comparison-note" class="comparison-note" hidden></p>
+        <div class="field-pair" id="field-pair">
+        <div class="field-world" id="baseline-world" hidden>
+          <div class="branch-caption"><span><b>A</b> BASELINE</span><output id="baseline-rule"></output></div>
+          <div class="viewport"><canvas id="field-baseline" width="960" height="640" tabindex="0" aria-label="Baseline simulation field"></canvas><span class="canvas-tag">A / ORIGINAL RULE</span></div>
+        </div>
+        <div class="field-world">
+        <div class="branch-caption" id="variant-caption" hidden><span><b>B</b> VARIANT</span><output id="variant-rule"></output></div>
         <div class="viewport" id="viewport">
           <canvas id="field" width="960" height="640" tabindex="0" aria-label="Interactive simulation field"></canvas>
           <span class="canvas-tag" id="canvas-tag">LIVE FIELD / 01</span>
           <span class="canvas-coordinate" aria-hidden="true">∞ WRAPPING WORLD</span>
           <div class="paused-overlay" id="paused-overlay" hidden>TIME IS STILL <span>Draw, adjust, or take one step.</span></div>
+        </div>
+        </div>
         </div>
         <div class="transport">
           <div class="transport-buttons"><button class="play" id="play" type="button" title="Pause or play (Space)">Ⅱ <span>Pause</span></button><button class="square-button" id="step" type="button" aria-label="Advance one tick" title="Advance one tick">▹|</button><button class="square-button" id="reset" type="button" aria-label="Restart from seed" title="Restart from seed (R)">↺</button></div>
@@ -60,9 +71,18 @@
       <aside class="inspector" aria-label="Experiment controls">
         <div class="inspector-heading"><h3>Shape this world</h3><span>↗</span></div>
         <p class="small-copy">A small change can go a long way.</p>
-        <div class="presets"><label class="section-label" for="preset">START SOMEWHERE</label><select id="preset"></select><p id="preset-hint"></p></div>
+        <div class="presets" id="presets"><label class="section-label" for="preset">START SOMEWHERE</label><select id="preset"></select><p id="preset-hint"></p></div>
+        <div class="comparison-controls" id="comparison-controls" hidden>
+          <p class="eyebrow">ONE RULE, TWO FUTURES</p>
+          <label for="compare-parameter" class="section-label">WHAT IF WE CHANGED…</label>
+          <select id="compare-parameter"></select>
+          <p class="compare-help">A keeps its original rule. Only B changes. Choosing another rule restarts both at the fork.</p>
+          <div class="baseline-value"><span>A · Original value</span><output id="compare-baseline"></output></div>
+          <div class="control"><label for="compare-value"><span>B · Your variation</span><output id="compare-output" for="compare-value"></output></label><input id="compare-value" type="range"><div class="bounds"><span id="compare-min"></span><span id="compare-max"></span></div></div>
+          <p class="compare-help" id="difference-explanation"></p>
+        </div>
         <div id="controls" class="controls"></div>
-        <div class="seed-row"><label for="seed" class="section-label">WORLD SEED</label><div><input id="seed" type="number" min="0" max="4294967295" step="1" aria-label="World seed"><button type="button" id="shuffle" class="square-button" aria-label="Explore a new random seed" title="Explore a new random seed">⤨</button></div><p>Same seed. Same beginning.</p></div>
+        <div class="seed-row"><label for="seed" class="section-label">WORLD SEED</label><div><input id="seed" type="number" min="0" max="4294967295" step="1" aria-label="World seed"><button type="button" id="shuffle" class="square-button" aria-label="Explore a new random seed" title="Explore a new random seed">⤨</button></div><p id="seed-note">Same seed. Same beginning.</p></div>
         <button type="button" id="save" class="primary">＋ Keep this moment</button>
         <button type="button" id="share" class="secondary">↗ Share the starting recipe</button>
         <p class="local-note">Moments stay in this browser.<br>Export them from your field notebook.</p>
@@ -79,7 +99,7 @@
   <dialog id="notebook" aria-labelledby="notebook-title">
     <div class="dialog-heading"><div><p class="eyebrow">OBSERVATIONS WORTH KEEPING</p><h2 id="notebook-title">Your field notebook</h2></div><button class="square-button" type="button" data-close aria-label="Close notebook">×</button></div>
     <p class="dialog-intro">A moment, preserved exactly. Restore it to continue exploring, or export it to take it with you.</p>
-    <div class="notebook-toolbar"><button id="import-open" class="secondary" type="button">↑ Import experiment</button><input type="file" id="import-file" accept="application/json,.json" hidden><span>VERSION 1 · JSON</span></div>
+    <div class="notebook-toolbar"><button id="import-open" class="secondary" type="button">↑ Import experiment</button><input type="file" id="import-file" accept="application/json,.json" hidden><span>MOMENTS · JSON</span></div>
     <div id="notebook-entries"></div>
   </dialog>
   <dialog id="about" aria-labelledby="about-title">
@@ -87,7 +107,7 @@
     <h2 id="about-title">Complexity begins<br>with something simple.</h2>
     <p>Emergence Atlas is an invitation to play with that idea. These three worlds follow small, local rules. There is no director painting the patterns and no leader organizing the flock.</p>
     <p>Built by ChatGPT in a repository generously opened by StealthMuskrat. It is a place to make useful, curious things, and to leave the workings open for anyone to explore.</p>
-    <div class="about-tips"><h3>A few field notes</h3><p><kbd>Space</kbd> pauses time. <kbd>R</kbd> restarts your world. Focus the field and press <kbd>Enter</kbd> to add a disturbance at its center.</p><p>Recipe links reproduce a beginning. Notebook exports preserve the exact simulation state. Parameter edits change the world live; starting density begins a new grid.</p><p>Reduced motion is respected: the atlas begins paused when your device requests it. You can also pause at any time.</p></div>
+    <div class="about-tips"><h3>A few field notes</h3><p><kbd>Space</kbd> pauses time. <kbd>R</kbd> restarts your world. Focus either field and press <kbd>Enter</kbd> to add a disturbance at its center.</p><p>Compare two futures forks the current moment into A and B. One rule varies; drawing and the clock stay shared. Reset returns both to the fork. Keep variant returns to a single world.</p><p>Recipe links reproduce a seeded beginning. A comparison link starts both from A’s seeded field; export a paired moment to preserve an exact fork and both futures. Parameter edits change the world live; starting density begins a new grid.</p><p>Reduced motion is respected: the atlas begins paused when your device requests it. You can also pause at any time.</p></div>
     <a class="secondary about-source" href="https://github.com/StealthMuskrat/ChatGPTsProject" target="_blank" rel="noreferrer">Explore the source code ↗</a>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

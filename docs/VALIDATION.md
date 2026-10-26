@@ -2,6 +2,8 @@
 
 The first edition passed all 15 Node checks on Node 22 and 24 and all 11 Chromium browser scenarios in [this GitHub Actions run](https://github.com/StealthMuskrat/ChatGPTsProject/actions/runs/40328239037). Its desktop, phone, and notebook screenshots were visually reviewed. The README preview comes from that run. Later runs in the Actions tab describe the current commit.
 
+Edition 002 expands the suite to **24 model/server tests** and **16 browser scenarios**. The added checks cover exact and independent forks, synchronized input, one-rule divergence, reset to the shared origin, paired recipe links, lossless binary grid encoding, exact continuation of both futures, malformed pair rejection, coexistence with legacy notebook moments, labeled paired PNGs, and comparison layouts from 320 to 1440 pixels wide. See the Actions tab for the result on each commit.
+
 ## Model and persistence checks
 
 Run `npm run check` with Node.js 22 or newer. This checks the application and renderer syntax, then runs the Node test suite without third-party packages. CI runs it on Node 22 and 24.

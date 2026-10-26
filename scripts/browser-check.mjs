@@ -42,7 +42,7 @@ try {
   page.on('pageerror',e => errors.push(e.message));
   page.on('response',r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(origin);
-  await page.waitForFunction(() => document.querySelectorAll('.control').length === 3);
+  await page.waitForFunction(() => document.querySelectorAll('#controls .control').length === 3);
 
   await check('reduced motion starts paused and the first field contains a real pattern',async () => {
     assert.equal(await page.locator('#play').getAttribute('aria-label'),'Play simulation');
@@ -111,7 +111,7 @@ try {
 
   await check('flock controls, play, pause, presets and keyboard shortcuts work',async () => {
     await page.locator('[data-world="flock"]').click();
-    assert.equal(await page.locator('.control').count(),5);
+    assert.equal(await page.locator('#controls .control').count(),5);
     await page.locator('#preset').selectOption('2');
     assert.equal(await page.locator('#param-speed').inputValue(),'4');
     await page.locator('#field').focus(); await page.keyboard.press('Space');
@@ -141,7 +141,7 @@ try {
     const link = await page.evaluate(() => navigator.clipboard.readText());
     assert.ok(link.includes('seed=0') && link.includes('world=life'));
     await page.goto(link);
-    await page.waitForFunction(() => document.querySelectorAll('.control').length === 4);
+    await page.waitForFunction(() => document.querySelectorAll('#controls .control').length === 4);
     assert.equal(await page.locator('#seed').inputValue(),'0');
     assert.equal(await page.locator('#saved-count').innerText(),'2');
     assert.equal(await page.locator('#param-surviveMin').inputValue(),'4');
@@ -161,11 +161,125 @@ try {
     await page.setViewportSize({ width:320,height:700 }); await noOverflow(page);
   });
 
+  const pairedContext = await browser.newContext({ viewport:{ width:1440,height:1000 },reducedMotion:'reduce',acceptDownloads:true,permissions:['clipboard-read','clipboard-write'] });
+  const paired = await pairedContext.newPage();
+  paired.on('pageerror',e => errors.push(e.message));
+  paired.on('response',r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
+  await paired.goto(origin);
+  await paired.waitForFunction(() => document.querySelectorAll('#controls .control').length === 3);
+
+  await check('comparison forks identical visible fields, varies one rule, and advances two futures',async () => {
+    await paired.locator('#step').click();
+    await paired.locator('#compare').click();
+    assert.equal(await paired.locator('#compare').getAttribute('aria-pressed'),'true');
+    assert.ok(await paired.locator('#baseline-world').isVisible());
+    assert.ok(await paired.locator('#seed').isDisabled());
+    assert.ok(await paired.locator('#controls').isHidden());
+    assert.match(await paired.locator('#comparison-note').innerText(),/tick 1\./);
+    const equal = await paired.evaluate(() => document.querySelector('#field').toDataURL() === document.querySelector('#field-baseline').toDataURL());
+    assert.ok(equal,'the two fields must start from the exact same pixels');
+    assert.notEqual(await paired.locator('#baseline-rule').innerText(),await paired.locator('#variant-rule').innerText());
+    for (let i = 0; i < 8; i++) await paired.locator('#step').click();
+    await paired.waitForFunction(() => document.querySelector('#field').toDataURL() !== document.querySelector('#field-baseline').toDataURL());
+    assert.equal(await paired.locator('#tick').innerText(),'000009');
+    await noOverflow(paired);
+    await paired.locator('#play').click();
+    await paired.waitForFunction(() => Number(document.querySelector('#tick').textContent) >= 600);
+    await paired.locator('#play').click();
+    await screenshot(paired,'desktop-two-futures.png');
+  });
+
+  let pairedExport, pairedLink, aPixels, bPixels;
+  await check('paired moments export both exact fields, restore them, and reset to the original fork',async () => {
+    await paired.locator('#save').click();
+    assert.equal(await paired.locator('#saved-count').innerText(),'1');
+    aPixels = await paired.locator('#field-baseline').evaluate(c => c.toDataURL());
+    bPixels = await paired.locator('#field').evaluate(c => c.toDataURL());
+    await paired.locator('#notebook-open').click();
+    assert.match(await paired.locator('#notebook-entries').innerText(),/Two futures/);
+    const download = paired.waitForEvent('download');
+    await paired.getByRole('button',{ name:'Export',exact:true }).click();
+    pairedExport = await readFile(await (await download).path());
+    assert.equal(JSON.parse(pairedExport).version,2); assert.ok(validateSnapshot(JSON.parse(pairedExport)));
+    await paired.getByRole('button',{ name:'Close notebook' }).click();
+    await paired.locator('#step').click();
+    await paired.locator('#notebook-open').click(); await paired.getByRole('button',{ name:'Restore moment' }).click();
+    assert.equal(await paired.locator('#field-baseline').evaluate(c => c.toDataURL()),aPixels);
+    assert.equal(await paired.locator('#field').evaluate(c => c.toDataURL()),bPixels);
+    const variation = await paired.locator('#compare-value').inputValue();
+    await paired.locator('#reset').click();
+    assert.equal(await paired.locator('#tick').innerText(),'000001');
+    assert.equal(await paired.locator('#compare-value').inputValue(),variation);
+    assert.ok(await paired.evaluate(() => document.querySelector('#field').toDataURL() === document.querySelector('#field-baseline').toDataURL()));
+  });
+
+  await check('paired PNGs include both fields and recipe links preserve the chosen experiment',async () => {
+    const download = paired.waitForEvent('download'); await paired.locator('#export-image').click();
+    const bytes = await readFile(await (await download).path());
+    assert.equal(bytes.readUInt32BE(16),1968); assert.equal(bytes.readUInt32BE(20),720);
+    await paired.locator('#share').click(); pairedLink = await paired.evaluate(() => navigator.clipboard.readText());
+    assert.ok(pairedLink.includes('compare=feed'));
+    await paired.goto(pairedLink);
+    await paired.waitForFunction(() => document.querySelector('#compare').getAttribute('aria-pressed') === 'true');
+    assert.equal(await paired.locator('#tick').innerText(),'000000');
+    assert.ok(await paired.evaluate(() => document.querySelector('#field').toDataURL() === document.querySelector('#field-baseline').toDataURL()));
+    await paired.locator('#compare-parameter').selectOption('kill');
+    assert.match(await paired.locator('#baseline-rule').innerText(),/Removal rate/);
+    assert.equal(await paired.locator('#tick').innerText(),'000000');
+  });
+
+  await check('paired imports survive reload alongside legacy moments and reject corrupted data',async () => {
+    await paired.locator('#notebook-open').click();
+    await paired.locator('#import-file').setInputFiles({ name:'legacy.json',mimeType:'application/json',buffer:exported });
+    await paired.waitForFunction(() => document.querySelector('#saved-count').textContent === '2');
+    await paired.locator('#import-file').setInputFiles({ name:'pair.json',mimeType:'application/json',buffer:pairedExport });
+    await paired.waitForFunction(() => document.querySelector('#saved-count').textContent === '3');
+    const bad = JSON.parse(pairedExport); bad.variant.encoding = 'script';
+    await paired.locator('#import-file').setInputFiles({ name:'bad-pair.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad)) });
+    await paired.waitForFunction(() => document.querySelector('#toast').textContent.includes('not a valid'));
+    assert.equal(await paired.locator('#saved-count').innerText(),'3');
+    await paired.getByRole('button',{ name:'Close notebook' }).click();
+    await paired.reload();
+    await paired.waitForFunction(() => document.querySelector('#saved-count').textContent === '3');
+    await paired.locator('#notebook-open').click();
+    await paired.getByRole('button',{ name:'Restore moment' }).first().click();
+    assert.equal(await paired.locator('#field-baseline').evaluate(c => c.toDataURL()),aPixels);
+    assert.equal(await paired.locator('#field').evaluate(c => c.toDataURL()),bPixels);
+  });
+
+  await check('comparisons fit desktop and phone widths, mirror input, and can continue with the variant',async () => {
+    for (const kind of ['reaction','flock','life']) {
+      await paired.setViewportSize({ width:1440,height:1000 });
+      await paired.locator(`[data-world="${kind}"]`).click();
+      await paired.locator('#compare').click();
+      if (kind === 'life') {
+        assert.equal(await paired.locator('#compare-parameter option[value="density"]').count(),0);
+        await paired.locator('#compare-parameter').selectOption('surviveMin');
+        assert.equal(await paired.locator('#compare-value').getAttribute('max'),'3');
+        await paired.locator('#compare-value').focus(); await paired.keyboard.press('End');
+      }
+      for (const width of [1024,768,390,320]) { await paired.setViewportSize({ width,height:900 }); await noOverflow(paired); }
+      const before = await paired.locator('#field').evaluate(c => c.toDataURL());
+      await paired.locator('#field-baseline').focus(); await paired.keyboard.press('Enter');
+      if (kind !== 'flock') {
+        await paired.waitForFunction(old => document.querySelector('#field').toDataURL() !== old,before);
+        assert.ok(await paired.evaluate(() => document.querySelector('#field').toDataURL() === document.querySelector('#field-baseline').toDataURL()));
+      }
+      await paired.setViewportSize({ width:390,height:844 });
+      if (kind === 'life') await screenshot(paired,'phone-two-futures.png');
+      await paired.locator('#compare').click();
+      assert.equal(await paired.locator('#compare').getAttribute('aria-pressed'),'false');
+      assert.ok(await paired.locator('#baseline-world').isHidden());
+      assert.ok(await paired.locator('#seed').isEnabled());
+    }
+  });
+  await pairedContext.close();
+
   await check('storage failure offers a portable export without claiming a save',async () => {
     const blocked = await browser.newContext({ reducedMotion:'reduce',acceptDownloads:true });
     await blocked.addInitScript(() => { Storage.prototype.setItem = () => { throw new Error('Storage disabled'); }; });
     const p = await blocked.newPage(); p.on('pageerror',e => errors.push(e.message));
-    await p.goto(origin); await p.waitForFunction(() => document.querySelectorAll('.control').length === 3);
+    await p.goto(origin); await p.waitForFunction(() => document.querySelectorAll('#controls .control').length === 3);
     const download = p.waitForEvent('download'); await p.locator('#save').click();
     assert.ok(validateSnapshot(JSON.parse(await readFile(await (await download).path()))));
     assert.equal(await p.locator('#saved-count').innerText(),'0');

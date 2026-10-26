@@ -2,9 +2,11 @@
 
 This edition is complete enough to explore. These are possible future chapters, not promises of background work.
 
-## Compare two possible worlds
+## Edition 002: two possible worlds — complete
 
-A split field with one shared seed and a single varied parameter could make sensitivity visible. Keep both clocks synchronized and explain which variable differs. Saved comparisons need their own versioned format.
+The split field now forks any live moment into two independent engines, varies one rule, synchronizes clocks and inputs, measures divergence, and saves both futures in a compact version 2 format. Single-world version 1 moments remain readable.
+
+Next, a difference heatmap and guided questions could help people locate *where* the fields diverge. A parameter history could distinguish a fixed-rule comparison from a sequence of live interventions.
 
 ## A better field notebook
 

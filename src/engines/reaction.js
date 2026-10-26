@@ -3,13 +3,14 @@ import { random, clamp, wrap } from '../random.js';
 export class Reaction {
   width = 192;
   height = 128;
-  constructor(seed, params) {
+  constructor(seed, params, { initialize = true } = {}) {
     this.params = { ...params };
     const n = this.width * this.height;
     this.u = new Float32Array(n).fill(1);
     this.v = new Float32Array(n);
     this.nextU = new Float32Array(n);
     this.nextV = new Float32Array(n);
+    if (!initialize) return;
     const rng = random(seed);
     for (let i = 0; i < 34; i++) this.paint(.08 + rng() * .84, .08 + rng() * .84, 2 + rng() * 5);
     // A mature starting field; user-visible ticks count from this initial condition.

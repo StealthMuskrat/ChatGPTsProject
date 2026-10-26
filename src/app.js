@@ -1,11 +1,14 @@
 import { catalog, defaults } from './catalog.js';
-import { engines, newSeed, readLink, linkHash, snapshotOf, restoreSnapshot, validateSnapshot, MAX_IMPORT_BYTES } from './state.js';
+import { newSeed, readLink, linkHash, recipeOf, worldFromRecipe, forkComparison, restartComparison, snapshotOf, restoreSnapshot, validateSnapshot, MAX_IMPORT_BYTES } from './state.js';
+import { comparisonControls, comparisonBounds, advanceWorld, paintWorld, releaseWorld, differenceMetric } from './comparison.js';
 import { Renderer } from './render.js';
 
 const $ = id => document.getElementById(id);
 const storageKey = 'emergence-atlas.notebook.v1';
 const canvas = $('field');
+const baselineCanvas = $('field-baseline');
 const renderer = new Renderer(canvas);
+const baselineRenderer = new Renderer(baselineCanvas);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let playing = !reducedMotion.matches;
 let state, entries = [], toastTimer, lastTime = 0, debt = 0, dirty = true, lastMetrics = 0;
@@ -25,13 +28,17 @@ function toast(message) {
 }
 
 function syncLink() {
-  const hash = linkHash({ ...state, params: state.engine.params });
+  const hash = linkHash(recipeOf(state));
   try { history.replaceState(null, '', `${location.pathname}${location.search}#${hash}`); } catch { /* Sandboxed previews may not permit URL changes. */ }
 }
 
 function startWorld(kind, params = defaults(kind), seed = state?.seed ?? 41827) {
+  adoptState(worldFromRecipe({ kind,params,seed }));
+}
+
+function adoptState(next) {
   releasePointer();
-  state = { kind, seed, tick: 0, engine: new engines[kind](seed,params) };
+  state = next;
   debt = 0; dirty = true;
   syncUI(); syncLink(); draw();
 }
@@ -88,8 +95,81 @@ function syncUI() {
   $('preset').replaceChildren();
   const custom = new Option('Your own world', 'custom'); custom.disabled = true; $('preset').add(custom);
   info.presets.forEach((p,i) => $('preset').add(new Option(p.name,String(i))));
-  updatePreset(); updatePlaying(); updateMetrics();
+  updatePreset(); syncComparisonUI(); updatePlaying(); updateMetrics();
 }
+
+function syncComparisonUI() {
+  const comparison = state.comparison, active = !!comparison;
+  $('field-pair').classList.toggle('comparing',active);
+  $('metrics').classList.toggle('comparison-metrics',active);
+  for (const id of ['baseline-world','variant-caption','comparison-controls','comparison-note']) $(id).hidden = !active;
+  $('controls').hidden = active; $('presets').hidden = active;
+  $('seed').disabled = active; $('shuffle').disabled = active;
+  $('compare').setAttribute('aria-pressed',String(active));
+  $('compare').textContent = active ? '↳ Keep variant' : '⇄ Compare two futures';
+  $('compare-invitation').textContent = active ? 'Same moment. One rule apart.' : 'One beginning. A different possibility.';
+  $('reset').setAttribute('aria-label',active ? 'Restart both from the fork' : 'Restart from seed');
+  $('reset').title = active ? 'Restart both from the fork (R)' : 'Restart from seed (R)';
+  $('seed-note').textContent = active ? 'Shared seed. Reset returns both to the fork.' : 'Same seed. Same beginning.';
+  document.querySelector('.inspector-heading h3').textContent = active ? 'Change one possibility' : 'Shape this world';
+  $('canvas-tag').textContent = active ? 'B / VARIED RULE' : `LIVE FIELD / ${catalog[state.kind].number}`;
+  if (!active) return;
+  $('interaction').textContent = 'Draw on either field. The same disturbance reaches both futures.';
+  $('comparison-note').textContent = `Forked together at tick ${comparison.origin.tick.toLocaleString()}. Both clocks and every brush stroke stay synchronized. Reset returns to this fork.`;
+  baselineCanvas.setAttribute('aria-label',`Baseline A: ${catalog[state.kind].name}. Drawing and Enter affect both fields. Space pauses both.`);
+  canvas.setAttribute('aria-label',`Variant B: ${catalog[state.kind].name}. Drawing and Enter affect both fields. Space pauses both.`);
+  $('compare-parameter').replaceChildren(...comparisonControls(state.kind).map(c => new Option(c.label,c.key)));
+  $('compare-parameter').value = comparison.parameter;
+  const c = comparisonBounds(state.kind,comparison.parameter,comparison.baseline.params);
+  Object.assign($('compare-value'),{ min:c.min,max:c.max,step:c.step,value:state.engine.params[c.key] });
+  $('compare-min').textContent = format(c.min,c); $('compare-max').textContent = format(c.max,c);
+  $('difference-explanation').textContent = {
+    reaction:'Difference measures the mean absolute change in chemical v, from 0 to 1. A zero value can become nonzero after the next tick.',
+    life:'Difference is the percentage of cells alive in only one field. Cell age affects brightness but does not count as disagreement.',
+    flock:'Difference is the mean shortest wrapping distance between corresponding travelers. Direction differences can appear before positions separate.',
+  }[state.kind];
+  syncComparisonReadout();
+}
+
+function syncComparisonReadout() {
+  const { parameter,baseline } = state.comparison;
+  const c = comparisonBounds(state.kind,parameter,baseline.params);
+  const a = format(baseline.params[parameter],c), b = format(state.engine.params[parameter],c);
+  $('baseline-rule').textContent = `${c.label}: ${a}`;
+  $('variant-rule').textContent = `${c.label}: ${b}`;
+  $('compare-baseline').value = a; $('compare-output').value = b;
+  $('compare-value').style.setProperty('--fill',`${c.max === c.min ? 0 : 100*(state.engine.params[parameter]-c.min)/(c.max-c.min)}%`);
+}
+
+function restartWorld() {
+  if (state.comparison) { adoptState(restartComparison(state)); toast('Both futures returned to their shared fork.'); }
+  else { startWorld(state.kind,state.engine.params); toast('Back to the beginning. Same seed, same rules.'); }
+}
+
+$('compare').addEventListener('click', () => {
+  releasePointer();
+  if (state.comparison) {
+    const next = { ...state }; delete next.comparison; adoptState(next);
+    toast('Continuing with B. Its field and rules are preserved.');
+  } else {
+    playing = false;
+    const parameter = { reaction:'feed',flock:'alignment',life:'birth' }[state.kind];
+    adoptState(forkComparison(state,parameter));
+    $('compare-value').focus();
+    toast('Two identical fields, one different rule. Press Play or Step to see what changes.');
+  }
+});
+$('compare-parameter').addEventListener('change', () => {
+  if (!state.comparison) return;
+  adoptState(restartComparison(state,$('compare-parameter').value));
+  $('compare-parameter').focus();
+  toast('A new question, from the same shared fork.');
+});
+$('compare-value').addEventListener('input', () => {
+  if (!state.comparison) return;
+  state.engine.params[state.comparison.parameter] = Number($('compare-value').value);
+  syncComparisonReadout(); syncLink(); dirty = true;
+});
 
 function format(value,control) {
   if (control.step >= 1) return String(value);
@@ -123,7 +203,11 @@ function updatePlaying() {
 
 function updateMetrics() {
   $('tick').textContent = String(state.tick).padStart(6,'0');
-  const metrics = [...state.engine.metrics(), { label: 'Boundary', value: 'WRAPS AT EDGES' }];
+  const metrics = state.comparison ? [
+    { ...state.comparison.baseline.metrics()[0],label:`A · ${state.comparison.baseline.metrics()[0].label}` },
+    { ...state.engine.metrics()[0],label:`B · ${state.engine.metrics()[0].label}` },
+    differenceMetric(state.kind,state.comparison.baseline,state.engine),
+  ] : [...state.engine.metrics(), { label: 'Boundary', value: 'WRAPS AT EDGES' }];
   $('metrics').replaceChildren(...metrics.map(m => {
     const el = document.createElement('div'); el.className = 'metric';
     const label = document.createElement('span'); label.textContent = m.label;
@@ -133,10 +217,14 @@ function updateMetrics() {
 }
 
 function tick(count = 1) {
-  for (let i = 0; i < count; i++) { state.engine.step(); state.tick++; }
+  advanceWorld(state,count);
   dirty = true;
 }
-function draw() { renderer.draw(state.kind,state.engine); dirty = false; }
+function draw() {
+  renderer.draw(state.kind,state.engine);
+  if (state.comparison) baselineRenderer.draw(state.kind,state.comparison.baseline);
+  dirty = false;
+}
 
 function frame(now) {
   const elapsed = Math.min(100, now-(lastTime || now)); lastTime = now;
@@ -169,7 +257,7 @@ $('preset').addEventListener('change', () => {
 });
 $('play').addEventListener('click', () => { playing = !playing; updatePlaying(); });
 $('step').addEventListener('click', () => { playing = false; updatePlaying(); tick(); draw(); updateMetrics(); });
-$('reset').addEventListener('click', () => { startWorld(state.kind,state.engine.params); toast('Back to the beginning. Same seed, same rules.'); });
+$('reset').addEventListener('click',restartWorld);
 $('shuffle').addEventListener('click', () => startWorld(state.kind,state.engine.params,newSeed()));
 $('seed').addEventListener('change', () => {
   const seed = Number($('seed').value);
@@ -178,45 +266,47 @@ $('seed').addEventListener('change', () => {
 });
 
 function disturb(event) {
-  const r = canvas.getBoundingClientRect();
+  const r = event.currentTarget.getBoundingClientRect();
   const x = Math.max(0,Math.min(.999999,(event.clientX-r.left)/r.width));
   const y = Math.max(0,Math.min(.999999,(event.clientY-r.top)/r.height));
   // Interpolation keeps quick brush strokes continuous on a sparse event stream.
   if (pointer?.last && state.kind !== 'flock') {
     const dist = Math.hypot((x-pointer.last.x)*192,(y-pointer.last.y)*128);
     const n = Math.max(1,Math.ceil(dist/2));
-    for (let i = 1; i <= n; i++) state.engine.paint(pointer.last.x+(x-pointer.last.x)*i/n,pointer.last.y+(y-pointer.last.y)*i/n);
-  } else state.engine.paint(x,y);
+    for (let i = 1; i <= n; i++) paintWorld(state,pointer.last.x+(x-pointer.last.x)*i/n,pointer.last.y+(y-pointer.last.y)*i/n);
+  } else paintWorld(state,x,y);
   if (pointer) pointer.last = { x,y };
   dirty = true;
 }
 function releasePointer() {
-  if (pointer && canvas.hasPointerCapture(pointer.id)) canvas.releasePointerCapture(pointer.id);
+  if (pointer && pointer.canvas.hasPointerCapture(pointer.id)) pointer.canvas.releasePointerCapture(pointer.id);
   pointer = null;
-  state?.engine.release?.();
+  releaseWorld(state);
   dirty = true;
 }
-canvas.addEventListener('pointerdown', e => {
+for (const field of [canvas,baselineCanvas]) {
+field.addEventListener('pointerdown', e => {
   if (!e.isPrimary || e.button !== 0) return;
-  canvas.focus({ preventScroll: true }); canvas.setPointerCapture(e.pointerId);
-  pointer = { id: e.pointerId, last: null }; disturb(e);
+  field.focus({ preventScroll: true }); field.setPointerCapture(e.pointerId);
+  pointer = { id: e.pointerId, last: null,canvas:field }; disturb(e);
 });
-canvas.addEventListener('pointermove', e => { if (pointer?.id === e.pointerId) disturb(e); });
-canvas.addEventListener('pointerup',releasePointer);
-canvas.addEventListener('pointercancel',releasePointer);
-canvas.addEventListener('lostpointercapture',releasePointer);
-window.addEventListener('blur',releasePointer);
-document.addEventListener('visibilitychange', () => { lastTime = 0; debt = 0; releasePointer(); });
-canvas.addEventListener('keydown', e => {
+field.addEventListener('pointermove', e => { if (pointer?.id === e.pointerId) disturb(e); });
+field.addEventListener('pointerup',releasePointer);
+field.addEventListener('pointercancel',releasePointer);
+field.addEventListener('lostpointercapture',releasePointer);
+field.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  e.preventDefault(); state.engine.paint(.5,.5);
-  if (state.kind === 'flock') { tick(); state.engine.release(); }
+  e.preventDefault(); paintWorld(state,.5,.5);
+  if (state.kind === 'flock') { tick(); releaseWorld(state); }
   dirty = true; toast('A small disturbance at the center of the world.');
 });
+}
+window.addEventListener('blur',releasePointer);
+document.addEventListener('visibilitychange', () => { lastTime = 0; debt = 0; releasePointer(); });
 document.addEventListener('keydown', e => {
   if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || e.target.closest('input,select,textarea,button,a,summary') || document.querySelector('dialog[open]')) return;
   if (e.code === 'Space') { e.preventDefault(); playing = !playing; updatePlaying(); }
-  if (e.key.toLowerCase() === 'r') startWorld(state.kind,state.engine.params);
+  if (e.key.toLowerCase() === 'r') restartWorld();
 });
 reducedMotion.addEventListener('change', e => { if (e.matches) { playing = false; updatePlaying(); } });
 
@@ -226,14 +316,27 @@ function download(blob,name) {
   setTimeout(() => URL.revokeObjectURL(url),1000);
 }
 $('export-image').addEventListener('click', () => {
-  draw(); canvas.toBlob(blob => {
-    if (blob) { download(blob,`atlas-${state.kind}-${state.seed}-${state.tick}.png`); toast('Field image exported.'); }
+  draw();
+  let image = canvas;
+  const filename = `atlas-${state.kind}-${state.seed}-${state.tick}${state.comparison ? '-comparison' : ''}.png`;
+  if (state.comparison) {
+    image = document.createElement('canvas'); image.width = 1968; image.height = 720;
+    const ctx = image.getContext('2d'); ctx.fillStyle = '#111916'; ctx.fillRect(0,0,image.width,image.height);
+    ctx.fillStyle = '#d4eb95'; ctx.font = '16px monospace';
+    ctx.fillText(`A / ${$('baseline-rule').textContent}`,16,35); ctx.fillText(`B / ${$('variant-rule').textContent}`,992,35);
+    ctx.drawImage(baselineCanvas,16,56); ctx.drawImage(canvas,992,56);
+    ctx.fillStyle = '#9aa698'; ctx.font = '12px monospace';
+    ctx.fillText(`EMERGENCE ATLAS / ${catalog[state.kind].name} / SEED ${state.seed} / TICK ${state.tick} / FORK ${state.comparison.origin.tick}`,16,712);
+  }
+  image.toBlob(blob => {
+    if (blob) { download(blob,filename); toast('Field image exported.'); }
     else toast('Image export was unavailable. Try exporting the experiment instead.');
   },'image/png');
 });
 $('share').addEventListener('click', async () => {
   syncLink();
-  try { await navigator.clipboard.writeText(location.href); toast('Recipe link copied. It recreates this beginning; export a moment to preserve its exact state.'); }
+  const message = state.comparison ? 'Comparison recipe copied. Both begin from A’s seed. Export a paired moment to preserve this exact fork.' : 'Recipe link copied. It recreates this beginning; export a moment to preserve its exact state.';
+  try { await navigator.clipboard.writeText(location.href); toast(message); }
   catch { toast('Your recipe is in the address bar. Copy the URL to share its beginning.'); }
 });
 
@@ -266,9 +369,9 @@ function refreshNotebook() {
   for (const entry of entries) {
     const s = entry.snapshot, el = document.createElement('article'); el.className = 'notebook-entry';
     const heading = document.createElement('div'); heading.className = 'entry-title';
-    const title = document.createElement('h3'); title.textContent = catalog[s.kind].name;
+    const title = document.createElement('h3'); title.textContent = `${catalog[s.kind].name}${s.version === 2 ? ' · Two futures' : ''}`;
     const date = document.createElement('span'); date.textContent = new Date(entry.savedAt).toLocaleString(undefined,{ month:'short',day:'numeric',hour:'numeric',minute:'2-digit' }); heading.append(title,date);
-    const meta = document.createElement('p'); meta.textContent = `SEED ${s.seed} / TICK ${s.tick.toLocaleString()}`;
+    const meta = document.createElement('p'); meta.textContent = `SEED ${s.seed} / TICK ${s.tick.toLocaleString()}${s.version === 2 ? ` / VARIED: ${catalog[s.kind].controls.find(c => c.key === s.parameter).label.toUpperCase()}` : ''}`;
     const actions = document.createElement('div'); actions.className = 'entry-actions';
     const restore = document.createElement('button'); restore.type = 'button'; restore.textContent = 'Restore moment';
     restore.addEventListener('click', () => {
@@ -297,12 +400,12 @@ $('import-file').addEventListener('change', async e => {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
-  if (file.size > MAX_IMPORT_BYTES) { toast('That file is too large. Choose an Atlas JSON export smaller than 3 MB.'); return; }
+  if (file.size > MAX_IMPORT_BYTES) { toast('That file is too large. Choose an Atlas JSON export smaller than 8 MB.'); return; }
   try {
     const s = JSON.parse(await file.text());
     if (!validateSnapshot(s)) throw new Error('Invalid experiment');
     if (keep(s)) toast('Experiment imported. Restore the moment when you’re ready.');
-  } catch { toast('That file is not a valid version 1 Atlas experiment. Nothing was changed.'); }
+  } catch { toast('That file is not a valid Atlas experiment (versions 1 and 2). Nothing was changed.'); }
 });
 document.querySelectorAll('a[href="#workspace"]').forEach(a => a.addEventListener('click', e => {
   e.preventDefault(); $('workspace').scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth' }); canvas.focus({ preventScroll: true });
@@ -310,12 +413,12 @@ document.querySelectorAll('a[href="#workspace"]').forEach(a => a.addEventListene
 window.addEventListener('hashchange', () => {
   if (!location.hash.includes('world=')) return;
   const recipe = readLink(location.hash);
-  if (recipe) startWorld(recipe.kind,recipe.params,recipe.seed);
+  if (recipe) adoptState(worldFromRecipe(recipe));
   else toast('This recipe link is invalid. Your current world is unchanged.');
 });
 
 const initial = readLink(location.hash);
-startWorld(initial?.kind || 'reaction',initial?.params || defaults('reaction'),initial?.seed ?? 41827);
+adoptState(worldFromRecipe(initial || { kind:'reaction',params:defaults('reaction'),seed:41827 }));
 refreshNotebook();
 if (storageWarning) toast(storageWarning);
 else if (!initial) toast('This recipe link was invalid, so a fresh chemical garden was opened.');

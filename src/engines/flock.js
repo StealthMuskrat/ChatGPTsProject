@@ -4,8 +4,10 @@ export class Flock {
   width = 960;
   height = 640;
   target = null;
-  constructor(seed, params) {
+  constructor(seed, params, { initialize = true } = {}) {
     this.params = { ...params };
+    this.boids = [];
+    if (!initialize) return;
     const rng = random(seed);
     this.boids = Array.from({ length: 200 }, () => {
       const angle = rng()*Math.PI*2;

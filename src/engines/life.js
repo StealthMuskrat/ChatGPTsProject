@@ -3,11 +3,13 @@ import { random, wrap } from '../random.js';
 export class Life {
   width = 144;
   height = 96;
-  constructor(seed, params) {
+  constructor(seed, params, { initialize = true } = {}) {
     this.params = { ...params };
-    const rng = random(seed);
-    this.cells = Uint8Array.from({ length: this.width*this.height }, () => rng() < params.density ? 1 : 0);
+    this.cells = new Uint8Array(this.width*this.height);
     this.next = new Uint8Array(this.cells.length);
+    if (!initialize) return;
+    const rng = random(seed);
+    for (let i = 0; i < this.cells.length; i++) this.cells[i] = rng() < params.density ? 1 : 0;
   }
   step() {
     const w = this.width, h = this.height, c = this.cells, n = this.next;
