@@ -4,7 +4,7 @@
 
 Run `npm run check` with Node.js 22 or newer. This checks the application and renderer syntax, then runs the Node test suite without third-party packages. CI runs it on Node 22 and 24.
 
-Fourteen regression tests cover seeded randomness, toroidal geometry, finite reaction fields across presets, known Conway patterns, simultaneous flock updates, agent bounds and speeds, malformed recipes, snapshot validation, independent saved arrays, and identical continuation after JSON transport.
+Fifteen regression tests cover seeded randomness, toroidal geometry, finite reaction fields across presets, known Conway patterns, simultaneous flock updates, agent bounds and speeds, malformed recipes, snapshot validation, independent saved arrays, identical continuation after JSON transport, and development-server behavior.
 
 ## Browser checks
 
