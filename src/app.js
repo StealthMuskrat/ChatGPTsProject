@@ -285,21 +285,21 @@ function releasePointer() {
   dirty = true;
 }
 for (const field of [canvas,baselineCanvas]) {
-field.addEventListener('pointerdown', e => {
-  if (!e.isPrimary || e.button !== 0) return;
-  field.focus({ preventScroll: true }); field.setPointerCapture(e.pointerId);
-  pointer = { id: e.pointerId, last: null,canvas:field }; disturb(e);
-});
-field.addEventListener('pointermove', e => { if (pointer?.id === e.pointerId) disturb(e); });
-field.addEventListener('pointerup',releasePointer);
-field.addEventListener('pointercancel',releasePointer);
-field.addEventListener('lostpointercapture',releasePointer);
-field.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  e.preventDefault(); paintWorld(state,.5,.5);
-  if (state.kind === 'flock') { tick(); releaseWorld(state); }
-  dirty = true; toast('A small disturbance at the center of the world.');
-});
+  field.addEventListener('pointerdown', e => {
+    if (!e.isPrimary || e.button !== 0) return;
+    field.focus({ preventScroll: true }); field.setPointerCapture(e.pointerId);
+    pointer = { id: e.pointerId, last: null,canvas:field }; disturb(e);
+  });
+  field.addEventListener('pointermove', e => { if (pointer?.id === e.pointerId) disturb(e); });
+  field.addEventListener('pointerup',releasePointer);
+  field.addEventListener('pointercancel',releasePointer);
+  field.addEventListener('lostpointercapture',releasePointer);
+  field.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault(); paintWorld(state,.5,.5);
+    if (state.kind === 'flock') { tick(); releaseWorld(state); }
+    dirty = true; toast('A small disturbance at the center of the world.');
+  });
 }
 window.addEventListener('blur',releasePointer);
 document.addEventListener('visibilitychange', () => { lastTime = 0; debt = 0; releasePointer(); });

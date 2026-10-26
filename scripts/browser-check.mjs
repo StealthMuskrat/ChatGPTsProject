@@ -15,7 +15,7 @@ const server = spawn(process.execPath,['scripts/serve.js'],{ cwd:root,env:{ ...p
 let serverLog = '';
 server.stderr.on('data', d => { serverLog += d; });
 const results = [], errors = [];
-let browser, page;
+let browser, page, activePage;
 async function check(name,fn) { await fn(); results.push(name); console.log(`✓ ${name}`); }
 async function noOverflow(p) {
   const overflow = await p.evaluate(() => ({
@@ -26,7 +26,10 @@ async function noOverflow(p) {
   }));
   assert.ok(overflow.scroll <= overflow.width,`horizontal overflow: ${JSON.stringify(overflow)}`);
 }
-async function screenshot(p,name) { await p.screenshot({ path:fileURLToPath(new URL(name,out)),fullPage:true }); }
+async function screenshot(p,name) {
+  await p.screenshot({ path:fileURLToPath(new URL(name,out)),fullPage:true,
+    style:name === 'failure.png' ? undefined : '#toast { visibility:hidden !important; }' });
+}
 
 try {
   let ready = false;
@@ -38,6 +41,7 @@ try {
   browser = await chromium.launch({ headless:true });
   const context = await browser.newContext({ viewport:{ width:1440,height:1100 },reducedMotion:'reduce',acceptDownloads:true,permissions:['clipboard-read','clipboard-write'] });
   page = await context.newPage();
+  activePage = page;
   context.on('page', p => p.on('pageerror',e => errors.push(e.message)));
   page.on('pageerror',e => errors.push(e.message));
   page.on('response',r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
@@ -163,6 +167,7 @@ try {
 
   const pairedContext = await browser.newContext({ viewport:{ width:1440,height:1000 },reducedMotion:'reduce',acceptDownloads:true,permissions:['clipboard-read','clipboard-write'] });
   const paired = await pairedContext.newPage();
+  activePage = paired;
   paired.on('pageerror',e => errors.push(e.message));
   paired.on('response',r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
   await paired.goto(origin);
@@ -219,7 +224,7 @@ try {
     assert.equal(bytes.readUInt32BE(16),1968); assert.equal(bytes.readUInt32BE(20),720);
     await paired.locator('#share').click(); pairedLink = await paired.evaluate(() => navigator.clipboard.readText());
     assert.ok(pairedLink.includes('compare=feed'));
-    await paired.goto(pairedLink);
+    await paired.goto(pairedLink); await paired.reload();
     await paired.waitForFunction(() => document.querySelector('#compare').getAttribute('aria-pressed') === 'true');
     assert.equal(await paired.locator('#tick').innerText(),'000000');
     assert.ok(await paired.evaluate(() => document.querySelector('#field').toDataURL() === document.querySelector('#field-baseline').toDataURL()));
@@ -274,6 +279,7 @@ try {
     }
   });
   await pairedContext.close();
+  activePage = page;
 
   await check('storage failure offers a portable export without claiming a save',async () => {
     const blocked = await browser.newContext({ reducedMotion:'reduce',acceptDownloads:true });
@@ -301,7 +307,7 @@ try {
   await writeFile(new URL('report.json',out),JSON.stringify({ status:'passed',checks:results,errors },null,2));
   console.log(`\n${results.length} browser checks passed.`);
 } catch (error) {
-  if (page) await screenshot(page,'failure.png').catch(() => {});
+  if (activePage) await screenshot(activePage,'failure.png').catch(() => {});
   await writeFile(new URL('report.json',out),JSON.stringify({ status:'failed',checks:results,errors,failure:error.stack },null,2));
   throw error;
 } finally {
