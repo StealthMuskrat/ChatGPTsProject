@@ -122,6 +122,7 @@ function syncComparisonUI() {
   $('compare-parameter').value = comparison.parameter;
   const c = comparisonBounds(state.kind,comparison.parameter,comparison.baseline.params);
   Object.assign($('compare-value'),{ min:c.min,max:c.max,step:c.step,value:state.engine.params[c.key] });
+  $('compare-value').setAttribute('aria-label',`Variant B: ${c.label}`);
   $('compare-min').textContent = format(c.min,c); $('compare-max').textContent = format(c.max,c);
   $('difference-explanation').textContent = {
     reaction:'Difference measures the mean absolute change in chemical v, from 0 to 1. A zero value can become nonzero after the next tick.',
@@ -203,11 +204,14 @@ function updatePlaying() {
 
 function updateMetrics() {
   $('tick').textContent = String(state.tick).padStart(6,'0');
+  const variantMetrics = state.engine.metrics();
+  const baselineMetrics = state.comparison?.baseline.metrics();
+  const index = state.kind === 'flock' ? 1 : 0;
   const metrics = state.comparison ? [
-    { ...state.comparison.baseline.metrics()[0],label:`A · ${state.comparison.baseline.metrics()[0].label}` },
-    { ...state.engine.metrics()[0],label:`B · ${state.engine.metrics()[0].label}` },
+    { ...baselineMetrics[index],label:`A · ${baselineMetrics[index].label}` },
+    { ...variantMetrics[index],label:`B · ${variantMetrics[index].label}` },
     differenceMetric(state.kind,state.comparison.baseline,state.engine),
-  ] : [...state.engine.metrics(), { label: 'Boundary', value: 'WRAPS AT EDGES' }];
+  ] : [...variantMetrics, { label: 'Boundary', value: 'WRAPS AT EDGES' }];
   $('metrics').replaceChildren(...metrics.map(m => {
     const el = document.createElement('div'); el.className = 'metric';
     const label = document.createElement('span'); label.textContent = m.label;

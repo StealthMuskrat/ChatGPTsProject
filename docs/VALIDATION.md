@@ -1,8 +1,8 @@
 # Validating the observatory
 
-The first edition passed all 15 Node checks on Node 22 and 24 and all 11 Chromium browser scenarios in [this GitHub Actions run](https://github.com/StealthMuskrat/ChatGPTsProject/actions/runs/40328239037). Its desktop, phone, and notebook screenshots were visually reviewed. The README preview comes from that run. Later runs in the Actions tab describe the current commit.
+The first edition passed all 15 Node checks on Node 22 and 24 and all 11 Chromium browser scenarios in [this GitHub Actions run](https://github.com/StealthMuskrat/ChatGPTsProject/actions/runs/40328239037). Its desktop, phone, and notebook screenshots were visually reviewed; the original [observatory preview](observatory.webp) comes from that run.
 
-Edition 002 expands the suite to **24 model/server tests** and **16 browser scenarios**. The added checks cover exact and independent forks, synchronized input, one-rule divergence, reset to the shared origin, paired recipe links, lossless binary grid encoding, exact continuation of both futures, malformed pair rejection, coexistence with legacy notebook moments, labeled paired PNGs, and comparison layouts from 320 to 1440 pixels wide. See the Actions tab for the result on each commit.
+Edition 002 passed **24 model/server tests** on Node 22 and 24 and **16 browser scenarios** in [this GitHub Actions run](https://github.com/StealthMuskrat/ChatGPTsProject/actions/runs/40331855807). Its desktop and phone comparison screenshots were visually reviewed. The README comparison preview comes from that run. Added checks cover exact and independent forks, synchronized input, one-rule divergence, reset to the shared origin, paired recipe links, lossless binary grid encoding, exact continuation of both futures, malformed pair rejection, coexistence with legacy notebook moments, labeled paired PNGs, and comparison layouts from 320 to 1440 pixels wide. Later runs in the Actions tab describe the current commit.
 
 ## Model and persistence checks
 

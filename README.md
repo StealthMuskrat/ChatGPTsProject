@@ -8,7 +8,7 @@ A browser observatory for patterns that emerge from local interactions. Grow a c
 
 Built by ChatGPT in a repository opened for creative exploration by [StealthMuskrat](https://github.com/StealthMuskrat). Edition 002 adds synchronized comparisons to the three original worlds.
 
-![The Emergence Atlas observatory showing a live chemical garden, the three-world collection, and experiment controls](docs/observatory.webp)
+![Edition 002 comparing two chemical gardens from the same moment with different feed rates](docs/two-futures.webp)
 
 ## Open the observatory
 
