@@ -38,7 +38,7 @@ try {
     await new Promise(r => setTimeout(r,100));
   }
   assert.ok(ready,`Server failed to start: ${serverLog}`);
-  browser = await chromium.launch({ headless:true });
+  browser = await chromium.launch({ headless:true,...(process.env.ATLAS_BROWSER_CHANNEL ? { channel:process.env.ATLAS_BROWSER_CHANNEL } : {}) });
   const context = await browser.newContext({ viewport:{ width:1440,height:1100 },reducedMotion:'reduce',acceptDownloads:true,permissions:['clipboard-read','clipboard-write'] });
   page = await context.newPage();
   activePage = page;
@@ -385,7 +385,7 @@ try {
   });
 
   assert.deepEqual(errors,[],'browser console or HTTP errors');
-  await writeFile(new URL('report.json',out),JSON.stringify({ status:'passed',checks:results,errors },null,2));
+  await writeFile(new URL('report.json',out),JSON.stringify({ status:'passed',browser:browser.version(),channel:process.env.ATLAS_BROWSER_CHANNEL || 'bundled chromium',checks:results,errors },null,2));
   console.log(`\n${results.length} browser checks passed.`);
 } catch (error) {
   if (activePage) await screenshot(activePage,'failure.png').catch(() => {});

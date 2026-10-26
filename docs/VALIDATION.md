@@ -14,13 +14,17 @@ Fifteen regression tests cover seeded randomness, toroidal geometry, finite reac
 
 ## Browser checks
 
-The separate browser job installs Playwright 1.58.2 as temporary development tooling and runs:
+The separate browser job installs Playwright 1.58.2 as temporary development tooling and uses Google Chrome already installed on GitHub’s Ubuntu runner, avoiding repeated operating-system package updates. Its report records the actual browser version and channel. Browser checks have a ten-minute job limit, and new commits cancel superseded checks in the same workflow group.
+
+To run locally with Playwright’s bundled Chromium:
 
 ```sh
 npm install --no-save --package-lock=false playwright@1.58.2
 npx playwright install --with-deps chromium
 npm run test:browser
 ```
+
+To use an existing Chrome installation instead, set `ATLAS_BROWSER_CHANNEL=chrome` when running `npm run test:browser`; the Playwright browser installation step is then unnecessary.
 
 The script starts its own local server on port 3099 and checks the interface using Chromium. It exercises reduced motion, rendering, single stepping, exact visual restoration, JSON and PNG downloads, validated imports, drawing, keyboard shortcuts, presets, survival controls, density restarts, recipe sharing, persistence after reload, phone overflow, storage failure, and invalid links. It writes screenshots and a machine-readable report into `test-results/`, uploaded by CI as the `observatory-browser-check` artifact. An unhandled browser exception or failed local asset request fails the check.
 
