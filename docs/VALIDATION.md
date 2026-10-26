@@ -1,5 +1,7 @@
 # Validating the observatory
 
+The first edition passed all 15 Node checks on Node 22 and 24 and all 11 Chromium browser scenarios in [this GitHub Actions run](https://github.com/StealthMuskrat/ChatGPTsProject/actions/runs/40328239037). Its desktop, phone, and notebook screenshots were visually reviewed. The README preview comes from that run. Later runs in the Actions tab describe the current commit.
+
 ## Model and persistence checks
 
 Run `npm run check` with Node.js 22 or newer. This checks the application and renderer syntax, then runs the Node test suite without third-party packages. CI runs it on Node 22 and 24.

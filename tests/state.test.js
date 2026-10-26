@@ -16,6 +16,7 @@ test('recipe validation rejects unknown kinds, invalid JSON, off-grid or missing
   assert.equal(validParams('reaction',{ ...defaults('reaction'), feed:.0371 }),false);
   assert.equal(validParams('flock',{ ...defaults('flock'),speed:Infinity }),false);
   assert.equal(validParams('life',{ ...defaults('life'),extra:1 }),false);
+  assert.equal(validParams('life',{ ...defaults('life'),surviveMin:8,surviveMax:2 }),false);
 });
 
 test('every snapshot survives JSON transport and resumes with the same future', () => {

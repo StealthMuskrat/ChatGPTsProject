@@ -71,6 +71,7 @@ export function defaults(kind) {
 
 export function validParams(kind, params) {
   if (!Object.hasOwn(catalog, kind) || !params || typeof params !== 'object' || Array.isArray(params)) return false;
+  if (kind === 'life' && params.surviveMin > params.surviveMax) return false;
   return Object.keys(params).length === catalog[kind].controls.length && catalog[kind].controls.every(c => {
     const v = params[c.key];
     return typeof v === 'number' && Number.isFinite(v) && v >= c.min && v <= c.max &&

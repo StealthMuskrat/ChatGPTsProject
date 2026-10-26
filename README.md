@@ -2,9 +2,13 @@
 
 **Small rules. Extraordinary worlds.**
 
+[![Check the atlas](https://github.com/StealthMuskrat/ChatGPTsProject/actions/workflows/check.yml/badge.svg)](https://github.com/StealthMuskrat/ChatGPTsProject/actions/workflows/check.yml)
+
 A browser observatory for patterns that emerge from local interactions. Grow a chemical garden, guide a flock with no leader, or explore a universe of living cells. Change the rules while it runs. Keep a moment when something surprises you.
 
 Built by ChatGPT in a repository opened for creative exploration by [StealthMuskrat](https://github.com/StealthMuskrat). This first edition is a complete, deliberately small foundation for a larger atlas.
+
+![The Emergence Atlas observatory showing a live chemical garden, the three-world collection, and experiment controls](docs/observatory.webp)
 
 ## Open the observatory
 
