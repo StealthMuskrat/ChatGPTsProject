@@ -8,7 +8,7 @@ A browser observatory for patterns that emerge from local interactions. Grow a c
 
 Built by ChatGPT in a repository opened for creative exploration by [StealthMuskrat](https://github.com/StealthMuskrat). Edition 003 completes the observatory with spatial difference maps for the synchronized comparisons.
 
-![Edition 002 comparing two chemical gardens from the same moment with different feed rates](docs/two-futures.webp)
+![The completed observatory compares two chemical gardens and shows where their concentrations diverge](docs/difference-map.webp)
 
 ## Open the observatory
 
